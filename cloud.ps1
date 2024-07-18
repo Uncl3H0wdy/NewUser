@@ -82,10 +82,3 @@ function AddToSafeSenders {
             Add="matt.halliday@ampol.com.au","sdm@ampol.com.au","communications@ampol.com.au","brent.merrick@ampol.com.au"}
     }   
 }
-
-Connect-ExchangeOnline
-$email = read-host "Type user's email address and press enter"
-$All = Get-Mailbox $email;
-$All | ForEach-Object {
-    Set-MailboxJunkEmailConfiguration $_.Name -TrustedSendersAndDomains @{Add="matt.halliday@ampol.com.au","sdm@ampol.com.au","communications@ampol.com.au","brent.merrick@ampol.com.au"}
-}
