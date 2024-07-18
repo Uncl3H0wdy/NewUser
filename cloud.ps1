@@ -1,25 +1,61 @@
 # Checks if the AzureAD module is installed an imported
 # Check if a current connection to AzureAD exists
-<#if(!(Get-Module -Name "AzureAD")){
+if(!(Get-Module -Name "AzureAD")){
     Install-Module AzureAD
     Import-Module AzureAD
     Connect-AzureAD
-}#>
+}
+
+function AssignLicense {
+    Param ([string] $skuID)
+    $licenseToAssign = New-Object -TypeName Microsoft.Open.AzureAD.Model.AssignedLicense
+    $licenseToAssign.SkuId = $skuID
+    $licenseGroup = New-Object -TypeName Microsoft.Open.AzureAD.Model.AssignedLicenses
+    $licenseGroup.AddLicenses = $licenseToAssign
+    Set-AzureADUserLicense -ObjectId (Get-AzureADUser -ObjectId $user).ObjectId -AssignedLicenses $licenseGroup
+}
+function AddToSafeSenders {
+    param ([string] $userUPN)
+
+    if(!(Get-Module -Name "ExchangeOnlineManagement")){
+        Install-Module ExchangeOnlineManagement
+        Import-Module ExchangeOnlineManagement
+    }
+
+    Write-Host "Connecting to ExchangeOnline"
+    Connect-ExchangeOnline
+
+    # list the user as a trusted sender
+    Write-Host "Adding " $userUPN "to safe senders"
+    $All = Get-Mailbox $userUPN;
+    $All | ForEach-Object {
+        Set-MailboxJunkEmailConfiguration $_.Name -TrustedSendersAndDomains @{
+            Add="matt.halliday@ampol.com.au","sdm@ampol.com.au","communications@ampol.com.au","brent.merrick@ampol.com.au"}
+    }   
+
+    Read-Host "Completed Successfully! Please press any key to close this window." -ForegroundColor Green
+}
 
 $user = Read-Host "Enter the users email address"
-$userObj
+
 # Loop to validate the format of the email string
 while ($user -notmatch '^[a-zA-Z0-9._%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$') {
     Write-Host '*********** ' $user is not a valid email format!' **********' -ForegroundColor Red
     $user = Read-Host "Enter the users email address"
-    
-    if(null -eq (Get-AzureADUser -ObjectID $user) ){
-        Write-Host $user ' does not exist!' -ForegroundColor Red
-    }
 }
 
+# Validate the user object exists in Entra ID
+<#while(1){
+    try{
+        Get-AzureADGroup -ObjectID $user
+    }catch{
+        Write-Host $user ' does not exist!' -ForegroundColor Red
+        $user = Read-Host 'Enter an existing users email address'
+    }
+}#>
+
 # Create an array of compulsary groups
-$groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)')
+$groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable')
 
 # Prompt user to dertermine the correct DoneSafe group
 # Loop until the user selects a valid number
@@ -49,36 +85,21 @@ foreach($group in $groups){
     $groupToAdd = Get-AzureADGroup -SearchString $group
 
     try{
-        if($groupToAdd.DisplayName -eq 'AutoPilot Users (Apps)'){
-            Write-Host "Assigning E5 license via " $groupToAdd.DisplayName -ForegroundColor Green
-        }else{
             Write-Host "Adding user to " $groupToAdd.DisplayName -ForegroundColor Green
-            # Add-AzureADGroupMember -ObjectId $groupToAdd.ObjectId -RefObjectId (Get-AzureADUser -ObjectId $user).ObjectId
+            Add-AzureADGroupMember -ObjectId $groupToAdd.ObjectId -RefObjectId (Get-AzureADUser -ObjectId $user).ObjectId
         }
-    }catch{
+    catch{
         Write-Host $user " is already a member of " $group -ForegroundColor Red
     }
 }
 
 # Assign MS Vivia Insights license
 Write-Host "Assigning Microsoft Viva Insights License" -ForegroundColor Green
-$licenseToAssign = New-Object -TypeName Microsoft.Open.AzureAD.Model.AssignedLicense
-$licenseToAssign.SkuId = '3d957427-ecdc-4df2-aacd-01cc9d519da8'
-$licenseGroup = New-Object -TypeName Microsoft.Open.AzureAD.Model.AssignedLicenses
-$licenseGroup.AddLicenses = $licenseToAssign
-Set-AzureADUserLicense -ObjectId (Get-AzureADUser -ObjectId $user).ObjectId -AssignedLicenses $licenseGroup
+AssignLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8'
+
+Write-Host "Assigning M365 E5 License" -ForegroundColor Green
+AssignLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06'
 
 # Call AddToSafeSenders function
 AddToSafeSenders -userUPN $user
 
-function AddToSafeSenders {
-    param ([string] $userUPN)
-
-    # list the user as a trusted sender
-    Write-Host "Adding " $userUPN "to safe senders"
-    $All = Get-Mailbox $userUPN;
-    $All | ForEach-Object {
-        Set-MailboxJunkEmailConfiguration $_.Name -TrustedSendersAndDomains @{
-            Add="matt.halliday@ampol.com.au","sdm@ampol.com.au","communications@ampol.com.au","brent.merrick@ampol.com.au"}
-    }   
-}
