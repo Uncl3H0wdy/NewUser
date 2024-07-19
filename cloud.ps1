@@ -1,10 +1,6 @@
 # Checks if the AzureAD module is installed an imported
 # Check if a current connection to AzureAD exists
-if(!(Get-Module -Name "AzureAD")){
-    Install-Module AzureAD
-    Import-Module AzureAD
-    Connect-AzureAD
-}
+
 
 function AssignLicense {
     Param ([string] $skuID)
@@ -36,23 +32,43 @@ function AddToSafeSenders {
     Read-Host "Completed Successfully! Please press any key to close this window." -ForegroundColor Green
 }
 
-$user = Read-Host "Enter the users email address"
-
-# Loop to validate the format of the email string
-while ($user -notmatch '^[a-zA-Z0-9._%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$') {
-    Write-Host '*********** ' $user is not a valid email format!' **********' -ForegroundColor Red
-    $user = Read-Host "Enter the users email address"
+if(!(Get-Module -Name "AzureAD")){
+    Install-Module AzureAD
+    Import-Module AzureAD
+    Connect-AzureAD
 }
 
-# Validate the user object exists in Entra ID
-<#while(1){
-    try{
-        Get-AzureADGroup -ObjectID $user
-    }catch{
-        Write-Host $user ' does not exist!' -ForegroundColor Red
-        $user = Read-Host 'Enter an existing users email address'
+$userUPN
+function ValidateUser {
+    param ([string] $userUPN)
+        try{
+            Get-AzureADUser -ObjectID $userUPN
+        }catch{
+            return $false
+        }
+    return $true 
+}
+
+while(1){
+    while(1){
+        try{
+            $userUPN = Read-Host "Enter the users email address"
+            if($userUPN -match '^[a-zA-Z0-9._%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$'){
+                if(!(ValidateUser -userUPN $userUPN)){
+                    Write-Host $userUPN ' does not exist!' -ForegroundColor Red
+                }else{
+                    Write-Host $userUPN ' exists!' -ForegroundColor Green         
+                }              
+            }else{
+                Write-Host '*********** ' $userUPN is not a valid email format!' **********' -ForegroundColor Red
+            }
+            break
+        }catch{
+            Write-Host 'Something went wrong!'
+        }
     }
-}#>
+}
+
 
 # Create an array of compulsary groups
 $groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable')
@@ -86,10 +102,10 @@ foreach($group in $groups){
 
     try{
             Write-Host "Adding user to " $groupToAdd.DisplayName -ForegroundColor Green
-            Add-AzureADGroupMember -ObjectId $groupToAdd.ObjectId -RefObjectId (Get-AzureADUser -ObjectId $user).ObjectId
+            Add-AzureADGroupMember -ObjectId $groupToAdd.ObjectId -RefObjectId (Get-AzureADUser -ObjectId $userUPN).ObjectId
         }
     catch{
-        Write-Host $user " is already a member of " $group -ForegroundColor Red
+        Write-Host $userUPN " is already a member of " $group -ForegroundColor Red
     }
 }
 
@@ -101,5 +117,7 @@ Write-Host "Assigning M365 E5 License" -ForegroundColor Green
 AssignLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06'
 
 # Call AddToSafeSenders function
-AddToSafeSenders -userUPN $user
+AddToSafeSenders -userUPN $userUPN
+
+Read-Host -Prompt "Completed successfully! Press Enter to exit"
 
