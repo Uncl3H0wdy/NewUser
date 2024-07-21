@@ -1,6 +1,10 @@
 # Checks if the AzureAD module is installed an imported
 # Check if a current connection to AzureAD exists
-
+if(!(Get-Module -Name "AzureAD")){
+    Install-Module AzureAD
+    Import-Module AzureAD
+    Connect-AzureAD
+}
 
 function AssignLicense {
     Param ([string] $skuID)
@@ -21,21 +25,13 @@ function AddToSafeSenders {
     Write-Host "Connecting to ExchangeOnline"
     Connect-ExchangeOnline
 
-    # list the user as a trusted sender
+    # Mark the defined users as "not spam" on the target users mailbox
     Write-Host "Adding " $userUPN "to safe senders"
-    $All = Get-Mailbox $userUPN;
-    $All | ForEach-Object {
+    $userMailbox = Get-Mailbox $userUPN;
+    $userMailbox | ForEach-Object {
         Set-MailboxJunkEmailConfiguration $_.Name -TrustedSendersAndDomains @{
             Add="matt.halliday@ampol.com.au","sdm@ampol.com.au","communications@ampol.com.au","brent.merrick@ampol.com.au"}
     }   
-
-    Read-Host "Completed Successfully! Please press any key to close this window." -ForegroundColor Green
-}
-
-if(!(Get-Module -Name "AzureAD")){
-    Install-Module AzureAD
-    Import-Module AzureAD
-    Connect-AzureAD
 }
 
 $userUPN
