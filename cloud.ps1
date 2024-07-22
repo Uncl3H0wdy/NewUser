@@ -1,3 +1,5 @@
+Write-Host -Prompt "Before proceeding please make sure you have Exchange Recipient RBAC role"
+
 # Checks if the AzureAD module is installed an imported
 # Check if a current connection to AzureAD exists
 if(!(Get-Module -Name "AzureAD")){
@@ -54,7 +56,8 @@ function AddToSafeSenders {
 
 $userObject
 $userUPN
-
+$distributionLists = @('DLAllUsers@z.co.nz')
+$groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable')
 
 function ValidateGroups {
     param([string] $groupToValidate)
@@ -67,8 +70,8 @@ while($true){
     try{
         $userUPN = Read-Host "Enter the users email address"
         if($userUPN -match '^[a-zA-Z0-9._%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$'){
-            Write-Host "Fetching the user Object....." -ForegroundColor DarkYellow
-            if(!(ValidateUser -userUPN $userUPN)){
+            Write-Host "Fetching the user Object....." -ForegroundColor Yellow
+            if(!(ValidateUser -userUPN $userObject.UserPrincipalName)){
                 Write-Host $userUPN ' does not exist!' -ForegroundColor Red
             }else{
                 Write-Host "Successfully fetched the User Object and ready to proceed!" -ForegroundColor Green
@@ -80,8 +83,7 @@ while($true){
 }
 
 
-# Create an array of compulsary groups
-$groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable')
+
 
 # Prompt user to dertermine the correct DoneSafe group
 # Loop until the user selects a valid number
@@ -106,16 +108,14 @@ while($true){
 foreach($group in $groups){
     $groupToAdd = Get-AzureADGroup -SearchString $group
     try{
-        Write-Host "Adding user to" $groupToAdd.DisplayName -ForegroundColor Green
         Add-AzureADGroupMember -ObjectId $groupToAdd.ObjectId -RefObjectId (Get-AzureADUser -ObjectId $userUPN).ObjectId
-        Write-Host "Successfully added" $userUPN "to" $groupToAdd.DisplayName -ForegroundColor Green
+        Write-Host "Successfully added" $userObject.UserPrincipalName "to" $groupToAdd.DisplayName -ForegroundColor Green
         }catch{
             Write-Host $userUPN "is already a member of" $group -ForegroundColor Red
         }
     }
 
 # Assign MS Vivia Insights license
-Write-Host "Validating Microsoft Viva Insights License" -ForegroundColor Yellow
 if(!(ValidateLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8')){
     Write-Host "The License does not exist!" -ForeGroundColor Red
 }else{
@@ -124,7 +124,6 @@ if(!(ValidateLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8')){
     Write-Host "Successfully assigned the Microsoft Viva Insights License" -ForegroundColor Green
 }
 
-Write-Host "Validating M365 E5 License" -ForegroundColor Yellow
 if(!(ValidateLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06')){
     Write-Host "The License does not exist!" -ForeGroundColor Red
 }else{
@@ -135,43 +134,42 @@ if(!(ValidateLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06')){
 
 
 # Call AddToSafeSenders function
-AddToSafeSenders -userUPN $userUPN
+AddToSafeSenders -userUPN $userObject.UserPrincipalName
 
 
-#Prompt user to dertermine the correct DoneSafe group
+#Prompt user to dertermine the correct Distribution List
 # Loop until the user selects a valid number
-
-$distributionLists = @('DLAllUsers@z.co.nz')
-
 while($true){
     try {
          # Validates the users input is an integer
-         $DL = [int](Read-Host "Please choose which Distribution List to add the user too:`n1: DL WEL Users (Wellington)`n2: DL CHC Users (Christchurch).`n3: DL Te Whare Rama (Auckland).")
+         $selectedDL = [int](Read-Host "Please choose which Distribution List to add the user too:`n1: DL WEL Users (Wellington)`n2: DL CHC Users (Christchurch).`n3: DL Te Whare Rama (Auckland).")
          
          # Checks if the input matches exactly '1', '2' or '3'
          if($DL -match '\b[1-3]\b'){
              # Check the value of $doneSafe and add it to the $groups Array
-             if ($DL -eq 1) {$distributionLists += "DLwelusers@z.co.nz"}
-             elseif($DL -eq 2){$distributionLists += 'DLchcusers@z.co.nz'}
-             elseif($DL -eq 3){$distributionLists += "DLTeWhareRama@z.co.nz"}
+             if ($selectedDL -eq 1) {$distributionLists += "DLwelusers@z.co.nz"}
+             elseif($selectedDL -eq 2){$distributionLists += 'DLchcusers@z.co.nz'}
+             elseif($selectedDL -eq 3){$distributionLists += "DLTeWhareRama@z.co.nz"}
              break
          }
          else{Write-Host '*********** Please choose an option from 1 - 3 **********' -ForegroundColor Red}
-     }
+        }
      catch {Write-Host '*********** Please choose an option from 1 - 3 **********' -ForegroundColor Red}
  }
 
- foreach($dl in $distributionLists){
-    $dlToAdd = Get-DistributionGroup -Identity $dl
+ foreach($item in $distributionLists){
+    $dlToAdd = Get-DistributionGroup -Identity $item
     Write-Host "Adding user to" $dlToAdd.DisplayName -ForegroundColor Green
     try {
-        Add-DistributionGroupMember -Identity $dl -Member $userObject.UserPrincipalName -ErrorAction Stop
+        Add-DistributionGroupMember -Identity $item -Member $userObject.UserPrincipalName -ErrorAction Stop
         Write-Host "Successfully added" + $userObject.DisplayName "to" $dlToAdd.DisplayName -ForegroundColor Green
     }
     catch {
         Write-Host  $userObject.DisplayName "is already a member of" $dlToAdd.DisplayName -ForegroundColor Red
     }
 }
+
+
 
 Read-Host -Prompt "Completed successfully! Press Enter to exit"
 
