@@ -5,12 +5,14 @@ Write-Host -Prompt "Before proceeding please make sure you have Exchange Recipie
 if(!(Get-Module -Name "AzureAD")){
     Install-Module AzureAD
     Import-Module AzureAD
-    Connect-AzureAD
 }
 if(!(Get-Module -Name "Microsoft.Graph.Identity.DirectoryManagement")){
     Install-Module Microsoft.Graph.Identity.DirectoryManagement
     Import-Module Microsoft.Graph.Identity.DirectoryManagement
 }
+
+Connect-AzureAD
+
 function ValidateLicense {
     Param ([string] $skuID){
         try{Get-MgSubscribedSku -SubscribedSkuId $skuID}
@@ -67,22 +69,22 @@ function ValidateGroups {
 }
 
 while($true){
-    try{
-        $userUPN = Read-Host "Enter the users email address"
-        if($userUPN -match '^[a-zA-Z0-9._%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$'){
-            Write-Host "Fetching the user Object....." -ForegroundColor Yellow
-            if(!(ValidateUser -userUPN $userObject.UserPrincipalName)){
-                Write-Host $userUPN ' does not exist!' -ForegroundColor Red
-            }else{
-                Write-Host "Successfully fetched the User Object and ready to proceed!" -ForegroundColor Green
-                $userObject = Get-AzureADUser -ObjectID $userUPN                            
-            }
-            break                    
-        }else{Write-Host 'Invalid email format: ' $userUPN -ForegroundColor Red}         
-    }catch{Write-Host $_}
+    while($true){
+        try{
+            $userUPN = Read-Host "Enter the users email address"
+            if($userUPN -match '^[a-zA-Z0-9._%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$'){
+                Write-Host "Fetching the user Object....." -ForegroundColor DarkYellow
+                if(!(ValidateUser -userUPN $userUPN)){
+                    Write-Host $userUPN ' does not exist!' -ForegroundColor Red
+                }else{
+                    Write-Host "Successfully fetched the User Object and ready to proceed!" -ForegroundColor Green
+                    $userObject = Get-AzureADUser -ObjectID $userUPN                            
+                }                    
+            }else{Write-Host '*********** ' $userUPN is not a valid email format!' **********' -ForegroundColor Red}         
+        }catch{Write-Host $_}
+        break
+    }
 }
-
-
 
 
 # Prompt user to dertermine the correct DoneSafe group
