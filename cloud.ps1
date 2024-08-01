@@ -110,7 +110,9 @@ foreach($group in $groups){
         Add-AzureADGroupMember -ObjectId $groupToAdd.ObjectId -RefObjectId (Get-AzureADUser -ObjectId $userUPN).ObjectId
         Write-Host "Successfully added" $userObject.UserPrincipalName "to" $groupToAdd.DisplayName -ForegroundColor Green
         }catch{
-            Write-Host $userUPN "is already a member of" $group -ForegroundColor Red
+            if($_.Exception.Message.Contains("One or more added object references already exist for the following modified properties: 'members'")){
+                Write-Host $userObject.UserPrincipalName "is already a member of" $groupToAdd.DisplayName -ForeGroundColor Red
+            }
         }
     }
 
@@ -118,7 +120,6 @@ foreach($group in $groups){
 if(!(ValidateLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8')){
     Write-Host "The License does not exist!" -ForeGroundColor Red
 }else{
-    Write-Host "Assigning Microsoft Viva Insights License" -ForegroundColor Green
     AssignLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8'
     Write-Host "Successfully assigned the Microsoft Viva Insights License" -ForegroundColor Green
 }
@@ -126,7 +127,6 @@ if(!(ValidateLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8')){
 if(!(ValidateLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06')){
     Write-Host "The License does not exist!" -ForeGroundColor Red
 }else{
-    Write-Host "Assigning M365 E5 License" -ForegroundColor Green
     AssignLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06'
     Write-Host "Successfully assigned the M365 E5 License" -ForegroundColor Green
 }
@@ -158,10 +158,9 @@ while($true){
 
  foreach($item in $distributionLists){
     $dlToAdd = Get-DistributionGroup -Identity $item
-    Write-Host "Adding user to" $dlToAdd.DisplayName -ForegroundColor Green
     try {
         Add-DistributionGroupMember -Identity $item -Member $userObject.UserPrincipalName -ErrorAction Stop
-        Write-Host "Successfully added" + $userObject.DisplayName "to" $dlToAdd.DisplayName -ForegroundColor Green
+        Write-Host "Successfully added" $userObject.DisplayName "to" $dlToAdd.DisplayName -ForegroundColor Green
     }
     catch {
         Write-Host  $userObject.DisplayName "is already a member of" $dlToAdd.DisplayName -ForegroundColor Red
