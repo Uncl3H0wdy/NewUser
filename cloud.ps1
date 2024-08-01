@@ -1,17 +1,28 @@
-Read-Host "Before proceeding please make sure you have Exchange Recipient RBAC role"
+Read-Host "Before proceeding please make sure you have Exchange Recipient RBAC role" 
 
 # Checks if the AzureAD module is installed an imported
 # Check if a current connection to AzureAD exists
 if(!(Get-Module -Name "AzureAD")){
-    Install-Module AzureAD
-    Import-Module AzureAD
-}
-if(!(Get-Module -Name "Microsoft.Graph.Identity.DirectoryManagement")){
-    Install-Module Microsoft.Graph.Identity.DirectoryManagement
-    Import-Module Microsoft.Graph.Identity.DirectoryManagement
+    Write-Host "Installing and importing the AzureAD module" -ForegroundColor Yellow
+    try{Install-Module AzureAD}
+    catch{Write-Host "Could not install AzureAD module. Please try again." -ForegroundColor Red}
+    try{Import-Module AzureAD}
+    catch{Write-Host "Could not import AzureAD module. Please try again." -ForegroundColor Red}
+    Write-Host "AzureAD module has installed imported successfully" -ForegroundColor Green
 }
 
-Connect-AzureAD
+try{
+    Write-Host "Connecting to AzureAD - please see the login prompt" -ForegroundColor Yellow
+    Connect-AzureAD -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
+    Write-Host "Connected to AzureAD" -ForegroundColor Green
+}catch{
+    Write-Host "Could not connect to AzureAD. Please try again." -ForegroundColor Red
+    exit
+}
+<#if(!(Get-Module -Name "Microsoft.Graph.Identity.DirectoryManagement")){
+    Install-Module Microsoft.Graph.Identity.DirectoryManagement
+    Import-Module Microsoft.Graph.Identity.DirectoryManagement
+}#>
 
 function ValidateLicense {
     Param ([string] $skuID){
@@ -39,13 +50,22 @@ function AssignLicense {
 function AddToSafeSenders {
     param ([string] $userUPN)
     if(!(Get-Module -Name "ExchangeOnlineManagement")){
-        Install-Module ExchangeOnlineManagement
-        Import-Module ExchangeOnlineManagement
+        Write-Host "Installing and importing the Exchange Online Management module" -ForegroundColor Yellow
+        try{Install-Module ExchangeOnlineManagement}
+        catch{Write-Host "Could not install Exchange Online Management module. Please try again." -ForegroundColor Red}
+        try{Import-Module ExchangeOnlineManagement}
+        catch{Write-Host "Could not import Exchange Online Management module. Please try again." -ForegroundColor Red}
+        Write-Host "Exchange Online Management module has installed imported successfully" -ForegroundColor Green
     }
-
-    Write-Host "Connecting to ExchangeOnline"
-    Connect-ExchangeOnline
-
+    try{
+        Write-Host "Connecting to ExchangeOnline - please see the login prompt" -ForeGroundColor Yellow
+        Connect-ExchangeOnline -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
+        Write-Host "Connected to ExchangeOnline" -ForeGroundColor Green
+    }catch{
+        Write-Host "Could not connect to ExchangeOnline. Please try again." -ForegroundColor Red
+        exit
+    }
+    
     # Mark the defined users as "not spam" on the target users mailbox
     Write-Host "Adding "$userUPN "to safe senders" -ForegroundColor Yellow
     $userMailbox = Get-Mailbox $userUPN;
