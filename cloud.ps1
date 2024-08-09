@@ -1,4 +1,11 @@
-Read-Host "Before proceeding please make sure you have Exchange Recipient RBAC role" 
+while($true){
+    $rbac = Read-Host "Before proceeding please make sure you have Exchange Recipient RBAC role. Have you got the Exchange Recipient role? [Y/N]"
+    if(!($rbac -match '[Y|y|n|N]')){
+        Write-Host "Invalid selection. Please type 'Y' or 'N':"
+    }else{
+        break
+    }
+}
 
 # Checks if the AzureAD module is installed an imported
 # Check if a current connection to AzureAD exists
