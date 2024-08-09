@@ -4,7 +4,7 @@ Read-Host "Before proceeding please make sure you have Exchange Recipient RBAC r
 # Check if a current connection to AzureAD exists
 if(!(Get-Module -Name "AzureAD")){
     Write-Host "Installing and importing the AzureAD module" -ForegroundColor Yellow
-    try{Install-Module AzureAD}
+    try{Install-Module AzureAD -Force}
     catch{Write-Host "Could not install AzureAD module. Please try again." -ForegroundColor Red}
     try{Import-Module AzureAD}
     catch{Write-Host "Could not import AzureAD module. Please try again." -ForegroundColor Red}
@@ -167,7 +167,7 @@ while($true){
          if($selectedDL -match '\b[1-3]\b'){
              # Check the value of $doneSafe and add it to the $groups Array
              if ($selectedDL -eq 1) {$distributionLists += "DLwelusers@z.co.nz"}
-             elseif($selectedDL -eq 2){$distributionLists += 'DLchcusers@z.co.nz'}
+             elseif($selectedDL -eq 2){$distributionLists += 'GXSNZCHCUsers@z.co.nz'}
              elseif($selectedDL -eq 3){$distributionLists += "DLTeWhareRama@z.co.nz"}
              break
          }
