@@ -11,19 +11,6 @@ if(!(Get-Module -Name "AzureAD")){
     Write-Host "AzureAD module has installed imported successfully" -ForegroundColor Green
 }
 
-try{
-    Write-Host "Connecting to AzureAD - please see the login prompt" -ForegroundColor Yellow
-    Connect-AzureAD -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
-    Write-Host "Connected to AzureAD" -ForegroundColor Green
-}catch{
-    Write-Host "Could not connect to AzureAD. Please try again." -ForegroundColor Red
-    exit
-}
-<#if(!(Get-Module -Name "Microsoft.Graph.Identity.DirectoryManagement")){
-    Install-Module Microsoft.Graph.Identity.DirectoryManagement
-    Import-Module Microsoft.Graph.Identity.DirectoryManagement
-}#>
-
 function ValidateLicense {
     Param ([string] $skuID){
         try{Get-MgSubscribedSku -SubscribedSkuId $skuID}
