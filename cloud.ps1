@@ -1,5 +1,3 @@
-Read-Host "Before proceeding please make sure you have Exchange Recipient RBAC role" 
-
 # Checks if the AzureAD module is installed an imported
 # Check if a current connection to AzureAD exists
 if(!(Get-Module -Name "AzureAD")){
@@ -19,10 +17,30 @@ try{
     Write-Host "Could not connect to AzureAD. Please try again." -ForegroundColor Red
     exit
 }
-<#if(!(Get-Module -Name "Microsoft.Graph.Identity.DirectoryManagement")){
-    Install-Module Microsoft.Graph.Identity.DirectoryManagement
-    Import-Module Microsoft.Graph.Identity.DirectoryManagement
-}#>
+
+function ValidateRole{
+
+    # Checks the signed in user has the correct roles for running this script.
+    Write-Host "Validating your RBAC roles before proceeding with this script" -ForegroundColor Yellow
+    $userRole
+    $flag = $false
+    $roles = @('760908a9-a770-47dd-aa87-139ea74b1897', 'fd18ac2d-fb67-48d2-b9f8-a6417acfcb25', '40713a15-ad64-4b62-9522-ad49ab2b3f9e')
+    $currentUser = (Get-AzureADUser -ObjectID (Get-AzureADCurrentSessionInfo).Account.Id)
+    foreach($role in $roles){
+        $userRole = Get-AzureADDirectoryRoleMember -ObjectId $role | Where-Object {$_.UserPrincipalName -eq $currentUser.UserPrincipalName}
+
+        if($currentUser -eq $userRole){
+            $flag = $true
+            Write-Host "Roles have been validated!" -ForegroundColor Green
+            break
+        }
+    }
+
+    if($flag -eq $false){
+        Write-Host "Do do not have the required RBAC roles. Please assign either, Global Admin, Exchange Admin or Exchange Recipient Admin and run this script again." -ForegroundColor Red
+        Read-Host -Prompt "Press Enter to exit"
+    }
+}
 
 function ValidateLicense {
     Param ([string] $skuID){
@@ -76,17 +94,21 @@ function AddToSafeSenders {
     Write-Host "Successfully added "$userUPN" to safe senders" -ForegroundColor Green
 }
 
-$userObject
-$userUPN
-$distributionLists = @('DLAllUsers@z.co.nz')
-$groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable')
-
 function ValidateGroups {
     param([string] $groupToValidate)
     try {Get-AzureADGroup -SearchString $groupToValidate}
     catch {return $false}
     return $true
 }
+
+ValidateRole
+
+$userObject
+$userUPN
+$distributionLists = @('DLAllUsers@z.co.nz')
+$groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable')
+
+
 
 while($true){
     try{
