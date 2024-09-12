@@ -26,19 +26,17 @@ function ValidateRole{
     $flag = $false
     $roles = @('760908a9-a770-47dd-aa87-139ea74b1897', 'fd18ac2d-fb67-48d2-b9f8-a6417acfcb25', '40713a15-ad64-4b62-9522-ad49ab2b3f9e')
     $currentUser = (Get-AzureADUser -ObjectID (Get-AzureADCurrentSessionInfo).Account.Id)
-    foreach($role in $roles){
-        $userRole = Get-AzureADDirectoryRoleMember -ObjectId $role | Where-Object {$_.UserPrincipalName -eq $currentUser.UserPrincipalName}
-
-        if($currentUser -eq $userRole){
-            $flag = $true
-            Write-Host "Roles have been validated!" -ForegroundColor Green
-            break
+    while ($flag -eq $false) {
+        foreach($role in $roles){
+            $userRole = Get-AzureADDirectoryRoleMember -ObjectId $role | Where-Object {$_.UserPrincipalName -eq $currentUser.UserPrincipalName}
+    
+            if($currentUser -eq $userRole){
+                $flag = $true
+                Write-Host "Roles have been validated!" -ForegroundColor Green
+                break
+            }
+            Read-Host -Prompt "Do do not have the required RBAC roles. Please assign either, Global Admin, Exchange Admin or Exchange Recipient Admin then press Enter to re-validate." -ForegroundColor Red
         }
-    }
-
-    if($flag -eq $false){
-        Write-Host "Do do not have the required RBAC roles. Please assign either, Global Admin, Exchange Admin or Exchange Recipient Admin and run this script again." -ForegroundColor Red
-        Read-Host -Prompt "Press Enter to exit"
     }
 }
 
@@ -55,6 +53,25 @@ function ValidateUser {
     try{Get-AzureADUser -ObjectID $userUPN}
     catch{return $false}
     return $true 
+}
+
+function ValidateMailBox {
+    param ([string] $mbxToValidate)
+    $timer = 0
+    while($true){
+        try{
+            Get-EXOMailbox -Identity $mbxToValidate -ErrorAction Stop
+            Write-Host "The mailbox has been validated" -ForegroundColor Green
+            break
+        }catch{
+            if($timer -eq 10){
+                Write-Error "Could not find the mailbox"
+                break
+            }
+            Start-Sleep -Seconds 5
+            $timer += 1
+        }
+    }
 }
 
 function AssignLicense {
@@ -83,9 +100,13 @@ function AddToSafeSenders {
         Write-Host "Could not connect to ExchangeOnline. Please try again." -ForegroundColor Red
         exit
     }
+
+    Write-Host "Validating configuration changes before proceeding. Please wait." -ForegroundColor Yellow
+    ValidateMailBox -mbxToValidate $userUPN 
     
     # Mark the defined users as "not spam" on the target users mailbox
     Write-Host "Adding "$userUPN "to safe senders" -ForegroundColor Yellow
+
     $userMailbox = Get-Mailbox $userUPN;
     $userMailbox | ForEach-Object {
         Set-MailboxJunkEmailConfiguration $_.Name -TrustedSendersAndDomains @{
@@ -107,8 +128,6 @@ $userObject
 $userUPN
 $distributionLists = @('DLAllUsers@z.co.nz')
 $groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable')
-
-
 
 while($true){
     try{
@@ -173,7 +192,6 @@ if(!(ValidateLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06')){
     Write-Host "Successfully assigned the M365 E5 License" -ForegroundColor Green
 }
 
-
 # Call AddToSafeSenders function
 AddToSafeSenders -userUPN $userObject.UserPrincipalName
 
@@ -212,5 +230,6 @@ while($true){
 
 
 Read-Host -Prompt "Completed successfully! Press Enter to exit"
+Exit
 
 # $userObject.DisplayName"<"$userObject.UserPrincipalName">" "is already a member of "$dlToAdd.DisplayName"<"$dlToAdd.PrimarySmtpAddress">"
