@@ -1,3 +1,7 @@
+# Connect to MsolService to assign data location
+Import-Module MSOnline
+Install-Module MSOnline
+
 # Checks if the AzureAD module is installed an imported
 # Check if a current connection to AzureAD exists
 if(!(Get-Module -Name "AzureAD")){
@@ -143,6 +147,42 @@ while($true){
             }                    
         }else{Write-Host '*********** ' $userUPN is not a valid email format!' **********' -ForegroundColor Red}         
     }catch{Write-Host $_}
+}
+
+try{
+    Write-Host "Connecting to MsolService - please see the login prompt" -ForegroundColor Yellow
+    Connect-MsolService -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
+    Write-Host "Connected to MsolService" -ForegroundColor Green
+}catch{
+    Write-Host "Could not connect to MsolService. Please try again." -ForegroundColor Red
+    exit
+}
+
+Write-Host "Setting usage location to New Zealand"
+
+$timer = 0
+while($true){
+    try{
+        Get-MsolUser -userprincipalname $userUPN | Set-MsolUser -UsageLocation NZ
+        Write-Host "The usage location has been set to NZ" -ForegroundColor Green
+        break
+    }catch{
+        if($timer -eq 10){
+            Write-Error "Could not set the usage location"
+            break
+        }
+        Start-Sleep -Seconds 5
+        $timer += 1
+    }
+}
+
+try{
+    Write-Host "Connecting to AzureAD - please see the login prompt" -ForegroundColor Yellow
+    Connect-AzureAD -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
+    Write-Host "Connected to AzureAD" -ForegroundColor Green
+}catch{
+    Write-Host "Could not connect to AzureAD. Please try again." -ForegroundColor Red
+    exit
 }
 
 # Prompt user to dertermine the correct DoneSafe group
