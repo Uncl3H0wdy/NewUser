@@ -1,24 +1,13 @@
-# Connect to MsolService to assign data location
-Import-Module MSOnline
-Install-Module MSOnline
-
-# Checks if the AzureAD module is installed an imported
-# Check if a current connection to AzureAD exists
-if(!(Get-Module -Name "AzureAD")){
-    Write-Host "Installing and importing the AzureAD module" -ForegroundColor Yellow
-    try{Install-Module AzureAD}
-    catch{Write-Host "Could not install AzureAD module. Please try again." -ForegroundColor Red}
-    try{Import-Module AzureAD}
-    catch{Write-Host "Could not import AzureAD module. Please try again." -ForegroundColor Red}
-    Write-Host "AzureAD module has installed imported successfully" -ForegroundColor Green
-}
 
 try{
-    Write-Host "Connecting to AzureAD - please see the login prompt" -ForegroundColor Yellow
-    Connect-AzureAD -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
-    Write-Host "Connected to AzureAD" -ForegroundColor Green
+    # Connect to MsolService to assign data location
+    Import-Module MSOnline
+    Install-Module MSOnline
+    Write-Host "Connecting to MsolService - please see the login prompt" -ForegroundColor Yellow
+    Connect-MsolService -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
+    Write-Host "Connected to MsolService" -ForegroundColor Green
 }catch{
-    Write-Host "Could not connect to AzureAD. Please try again." -ForegroundColor Red
+    Write-Host "Could not connect to MsolService. Please try again." -ForegroundColor Red
     exit
 }
 
@@ -54,7 +43,7 @@ function ValidateLicense {
 
 function ValidateUser {
     param ([string] $userUPN)
-    try{Get-AzureADUser -ObjectID $userUPN}
+    try{Get-MsolUser -UserPrincipalName $userUPN}
     catch{return $false}
     return $true 
 }
@@ -142,21 +131,13 @@ while($true){
                 Write-Host $userUPN ' does not exist!' -ForegroundColor Red
             }else{
                 Write-Host "Successfully fetched the User Object and ready to proceed!" -ForegroundColor Green
-                $userObject = Get-AzureADUser -ObjectID $userUPN    
+                $userObject = Get-MsolUser -UserPrincipalName $userUPN    
                 break  
             }                    
         }else{Write-Host '*********** ' $userUPN is not a valid email format!' **********' -ForegroundColor Red}         
     }catch{Write-Host $_}
 }
 
-try{
-    Write-Host "Connecting to MsolService - please see the login prompt" -ForegroundColor Yellow
-    Connect-MsolService -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
-    Write-Host "Connected to MsolService" -ForegroundColor Green
-}catch{
-    Write-Host "Could not connect to MsolService. Please try again." -ForegroundColor Red
-    exit
-}
 
 Write-Host "Setting usage location to New Zealand"
 
@@ -174,15 +155,6 @@ while($true){
         Start-Sleep -Seconds 5
         $timer += 1
     }
-}
-
-try{
-    Write-Host "Connecting to AzureAD - please see the login prompt" -ForegroundColor Yellow
-    Connect-AzureAD -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
-    Write-Host "Connected to AzureAD" -ForegroundColor Green
-}catch{
-    Write-Host "Could not connect to AzureAD. Please try again." -ForegroundColor Red
-    exit
 }
 
 # Prompt user to dertermine the correct DoneSafe group
@@ -266,8 +238,6 @@ while($true){
         Write-Host  $userObject.DisplayName "is already a member of" $dlToAdd.DisplayName -ForegroundColor Red
     }
 }
-
-
 
 Read-Host -Prompt "Completed successfully! Press Enter to exit"
 Exit
