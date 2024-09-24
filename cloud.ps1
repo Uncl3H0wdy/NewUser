@@ -1,40 +1,67 @@
 
+
 try{
     # Connect to MsolService to assign data location
+    Install-Module AzureAD -Force
+    Install-Module MSOnline -Force
+    Import-Module AzureAD
     Import-Module MSOnline
-    Install-Module MSOnline
-    Write-Host "Connecting to MsolService - please see the login prompt" -ForegroundColor Yellow
-    Connect-MsolService -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
-    Write-Host "Connected to MsolService" -ForegroundColor Green
 }catch{
-    Write-Host "Could not connect to MsolService. Please try again." -ForegroundColor Red
+    Write-Host "Could not Install or Import AzureAD/Msol Module(s). Please try again." -ForegroundColor Red
     exit
 }
 
+function ConnetAZ{
+    try{
+        # Connect to AzureAD
+        Write-Host "Connecting to AzureAD Module - please see the login prompt" -ForegroundColor Yellow
+        Connect-AzureAD -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
+        Write-Host "Connected to AzureAD" -ForegroundColor Green
+    }catch{
+        Write-Host "Could not connect to AzureAD. Please try again." -ForegroundColor Red
+        exit
+    }
+}
+
+function ConnectMS{
+    try{
+        # Connect to MSolservice
+        Write-Host "Connecting to MSolservice Module - please see the login prompt" -ForegroundColor Yellow
+        Connect-Msolservice -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
+        Write-Host "Connected to Msolservice" -ForegroundColor Green
+    }catch{
+        Write-Host "Could not connect to Msolservice. Please try again." -ForegroundColor Red
+        exit
+    }
+}
+
+
+
 function ValidateRole{
 
-    # Checks the signed in user has the correct roles for running this script.
-    Write-Host "Validating your RBAC roles before proceeding with this script" -ForegroundColor Yellow
-    $userRole
-    $flag = $false
-    $roles = @('760908a9-a770-47dd-aa87-139ea74b1897', 'fd18ac2d-fb67-48d2-b9f8-a6417acfcb25', '40713a15-ad64-4b62-9522-ad49ab2b3f9e')
-    $currentUser = (Get-AzureADUser -ObjectID (Get-AzureADCurrentSessionInfo).Account.Id)
-    while ($flag -eq $false) {
-        foreach($role in $roles){
-            $userRole = Get-AzureADDirectoryRoleMember -ObjectId $role | Where-Object {$_.UserPrincipalName -eq $currentUser.UserPrincipalName}
-    
-            if($currentUser -eq $userRole){
-                $flag = $true
-                Write-Host "Roles have been validated!" -ForegroundColor Green
-                break
-            }
-            Read-Host -Prompt "Do do not have the required RBAC roles. Please assign either, Global Admin, Exchange Admin or Exchange Recipient Admin then press Enter to re-validate." -ForegroundColor Red
-        }
-    }
+     # Checks the signed in user has the correct roles for running this script.
+     Write-Host "Validating your RBAC roles before proceeding with this script" -ForegroundColor Yellow
+     $userRole
+     $flag = $false
+     $roles = @('760908a9-a770-47dd-aa87-139ea74b1897', 'fd18ac2d-fb67-48d2-b9f8-a6417acfcb25', '40713a15-ad64-4b62-9522-ad49ab2b3f9e')
+     $currentUser = (Get-AzureADUser -ObjectID (Get-AzureADCurrentSessionInfo).Account.Id)
+     while ($flag -eq $false) {
+         foreach($role in $roles){
+             $userRole = Get-AzureADDirectoryRoleMember -ObjectId $role | Where-Object {$_.UserPrincipalName -eq $currentUser.UserPrincipalName}
+     
+             if($currentUser -eq $userRole){
+                 $flag = $true
+                 Write-Host "Roles have been validated!" -ForegroundColor Green
+                 break
+             }
+             Read-Host -Prompt "Do do not have the required RBAC roles. Please assign either, Global Admin, Exchange Admin or Exchange Recipient Admin then press Enter to re-validate."
+         }
+     }
 }
 
 function ValidateLicense {
     Param ([string] $skuID){
+        Set-Sleep -Seconds 3
         try{Get-MgSubscribedSku -SubscribedSkuId $skuID}
         catch{return $false}
         return $true
@@ -43,9 +70,8 @@ function ValidateLicense {
 
 function ValidateUser {
     param ([string] $userUPN)
-    try{Get-MsolUser -UserPrincipalName $userUPN}
-    catch{return $false}
-    return $true 
+    if(Get-MsolUser -UserPrincipalName $userUPN -ErrorAction:SilentlyContinue){return $true}
+    else {return $false}
 }
 
 function ValidateMailBox {
@@ -115,6 +141,7 @@ function ValidateGroups {
     return $true
 }
 
+ConnetAZ
 ValidateRole
 
 $userObject
@@ -122,6 +149,7 @@ $userUPN
 $distributionLists = @('DLAllUsers@z.co.nz')
 $groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable')
 
+ConnectMS
 while($true){
     try{
         $userUPN = Read-Host "Enter the users email address"
@@ -187,22 +215,15 @@ foreach($group in $groups){
                 Write-Host $userObject.UserPrincipalName "is already a member of" $groupToAdd.DisplayName -ForeGroundColor Red
             }
         }
-    }
-
-# Assign MS Vivia Insights license
-if(!(ValidateLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8')){
-    Write-Host "The License does not exist!" -ForeGroundColor Red
-}else{
-    AssignLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8'
-    Write-Host "Successfully assigned the Microsoft Viva Insights License" -ForegroundColor Green
 }
 
-if(!(ValidateLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06')){
-    Write-Host "The License does not exist!" -ForeGroundColor Red
-}else{
-    AssignLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06'
-    Write-Host "Successfully assigned the M365 E5 License" -ForegroundColor Green
-}
+ConnetAZ
+AssignLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8'
+Write-Host "Successfully assigned the Microsoft Viva Insights License" -ForegroundColor Green
+
+AssignLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06'
+Write-Host "Successfully assigned the M365 E5 License" -ForegroundColor Green
+
 
 # Call AddToSafeSenders function
 AddToSafeSenders -userUPN $userObject.UserPrincipalName
