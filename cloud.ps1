@@ -147,13 +147,13 @@ ValidateRole
 $userObject
 $userUPN
 $distributionLists = @('DLAllUsers@z.co.nz')
-$groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable')
+$groups = @('sec-azure-zpa-all-users', 'sec-azure-miro-users', 'AutoPilot Users (Apps)', 'sec-azure-SSPR-Enable', 'Sec_G_CrossTenantSyncProd')
 
 ConnectMS
 while($true){
     try{
         $userUPN = Read-Host "Enter the users email address"
-        if($userUPN -match '^[a-zA-Z0-9._%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$'){
+        if($userUPN -match '^[a-zA-Z0-9-._%±]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$'){
             Write-Host "Fetching the user Object....." -ForegroundColor DarkYellow
             if(!(ValidateUser -userUPN $userUPN)){
                 Write-Host $userUPN ' does not exist!' -ForegroundColor Red
