@@ -221,8 +221,8 @@ ConnetAZ
 AssignLicense -skuID '3d957427-ecdc-4df2-aacd-01cc9d519da8'
 Write-Host "Successfully assigned the Microsoft Viva Insights License" -ForegroundColor Green
 
-AssignLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06'
-Write-Host "Successfully assigned the M365 E5 License" -ForegroundColor Green
+#AssignLicense -skuID '06ebc4ee-1bb5-47dd-8120-11324bc54e06'
+#Write-Host "Successfully assigned the M365 E5 License" -ForegroundColor Green
 
 
 # Call AddToSafeSenders function
